@@ -1,44 +1,44 @@
 --[[
-    Script: Universal Silent Aim - hnhtlong.10th3 Edition
-    Author: hnhtlong.10th3
-    Key: hnhtlong
-    Contact: https://konect.gg/hnhtlong
+    AUTHOR: hnhtlong.10th3
+    PROJECT: VIP Silent Aim Custom
+    KEY: hnhtlong
+    CONTACT: https://konect.gg/hnhtlong
 ]]--
 
 local Library = loadstring(game:HttpGet("https://raw.githubusercontent.com/violin-suzutsuki/LinoriaLib/main/Library.lua"))()
 local Key = "hnhtlong"
 
--- // Notification Function
-local function Notify(title, content, duration)
+-- // System Notifications
+local function Notify(title, content)
     Library:Notify({
         Title = title,
         Content = content,
-        Duration = duration or 3
+        Duration = 3
     })
 end
 
--- // Initial Key System UI
-local KeyWindow = Library:CreateWindow({ Title = 'hnhtlong.10th3 | Login System', Center = true, AutoShow = true })
-local KeyTab = KeyWindow:AddTab('Authentication')
-local KeyGroup = KeyTab:AddLeftGroupbox('Xác thực người dùng')
+-- // --- AUTHENTICATION SYSTEM ---
+local KeyWindow = Library:CreateWindow({ Title = 'hnhtlong.10th3 | Verification', Center = true, AutoShow = true })
+local KeyTab = KeyWindow:AddTab('Auth')
+local KeyGroup = KeyTab:AddLeftGroupbox('System Access')
 
-KeyGroup:AddInput('KeyInput', { Default = '', Text = 'Nhập Access Key', Placeholder = 'Gợi ý: hnhtlong' })
-KeyGroup:AddButton('Đăng nhập', function()
+KeyGroup:AddInput('KeyInput', { Default = '', Text = 'Enter Key', Placeholder = 'Key: hnhtlong' })
+
+KeyGroup:AddButton('Login', function()
     if Library.Options.KeyInput.Value == Key then
-        Notify("Thành công", "Chào mừng hnhtlong.10th3 quay trở lại!", 3)
-        KeyWindow:Unload() 
-        StartMainScript() 
+        Notify("Success", "Loading hnhtlong.10th3 Private Script...")
+        KeyWindow:Unload()
+        StartMainScript()
     else
-        Notify("Thất bại", "Sai mật khẩu rồi, vui lòng thử lại!", 3)
+        Notify("Error", "Invalid Key!")
     end
 end)
 
+-- // --- MAIN SCRIPT EXECUTION ---
 function StartMainScript()
-    -- // Variables & Settings
+    -- Variables & Settings
     local SilentAimSettings = {
         Enabled = false,
-        ClassName = "hnhtlong.10th3 - Universal Silent Aim",
-        ToggleKey = "RightAlt",
         TeamCheck = false,
         VisibleCheck = false, 
         TargetPart = "HumanoidRootPart",
@@ -51,68 +51,41 @@ function StartMainScript()
         HitChance = 100
     }
 
-    local MainFileName = "UniversalSilentAim"
     local Camera = workspace.CurrentCamera
     local Players = game:GetService("Players")
     local RunService = game:GetService("RunService")
-    local GuiService = game:GetService("GuiService")
     local UserInputService = game:GetService("UserInputService")
-    local HttpService = game:GetService("HttpService")
-
     local LocalPlayer = Players.LocalPlayer
     local Mouse = LocalPlayer:GetMouse()
+    
     local Toggles = Library.Toggles
     local Options = Library.Options
 
     local ValidTargetParts = {"Head", "HumanoidRootPart"}
-    local PredictionAmount = 0.165
 
-    -- // Visuals (Drawing API)
+    -- Visuals (Drawing API)
     local mouse_box = Drawing.new("Square")
-    mouse_box.Visible = false
-    mouse_box.ZIndex = 999 
-    mouse_box.Color = Color3.fromRGB(54, 57, 241)
-    mouse_box.Thickness = 2 
-    mouse_box.Size = Vector2.new(20, 20)
-    mouse_box.Filled = false 
+    mouse_box.Visible = false; mouse_box.ZIndex = 999; mouse_box.Color = Color3.fromRGB(54, 57, 241); mouse_box.Thickness = 2; mouse_box.Size = Vector2.new(15, 15); mouse_box.Filled = false 
 
     local fov_circle = Drawing.new("Circle")
-    fov_circle.Thickness = 1
-    fov_circle.NumSides = 100
-    fov_circle.Radius = 180
-    fov_circle.Filled = false
-    fov_circle.Visible = false
-    fov_circle.Color = Color3.fromRGB(54, 57, 241)
+    fov_circle.Thickness = 1; fov_circle.NumSides = 100; fov_circle.Radius = 180; fov_circle.Visible = false; fov_circle.Color = Color3.fromRGB(54, 57, 241)
 
-    -- // Logic Functions
+    -- Logic Functions
     local function CalculateChance(Percentage)
-        local chance = math.floor(Random.new().NextNumber(Random.new(), 0, 1) * 100) / 100
-        return chance <= math.floor(Percentage) / 100
-    end
-
-    local function getPositionOnScreen(Vector)
-        local Vec3, OnScreen = Camera:WorldToScreenPoint(Vector)
-        return Vector2.new(Vec3.X, Vec3.Y), OnScreen
-    end
-
-    local function getDirection(Origin, Position)
-        return (Position - Origin).Unit * 1000
+        return (math.random(0, 100) <= Percentage)
     end
 
     local function IsPlayerVisible(Player)
-        local PlayerCharacter = Player.Character
-        local LocalPlayerCharacter = LocalPlayer.Character
-        if not (PlayerCharacter or LocalPlayerCharacter) then return false end 
-        local PlayerRoot = PlayerCharacter:FindFirstChild("HumanoidRootPart")
-        if not PlayerRoot then return false end 
-        local CastPoints = {PlayerRoot.Position, LocalPlayerCharacter, PlayerCharacter}
-        local ObscuringObjects = #Camera:GetPartsObscuringTarget(CastPoints, {LocalPlayerCharacter, PlayerCharacter})
-        return ObscuringObjects == 0
+        local Character = Player.Character
+        if not Character or not LocalPlayer.Character then return false end
+        local Root = Character:FindFirstChild("HumanoidRootPart")
+        if not Root then return false end
+        local Parts = Camera:GetPartsObscuringTarget({Root.Position}, {LocalPlayer.Character, Character})
+        return #Parts == 0
     end
 
     local function getClosestPlayer()
-        if not Options.TargetPart then return end
-        local Closest, DistanceToMouse
+        local Closest, DistanceToMouse = nil, math.huge
         for _, Player in next, Players:GetPlayers() do
             if Player == LocalPlayer then continue end
             if Toggles.TeamCheck.Value and Player.Team == LocalPlayer.Team then continue end
@@ -122,54 +95,53 @@ function StartMainScript()
 
             local Root = Character:FindFirstChild("HumanoidRootPart")
             if not Root then continue end
-            local ScreenPos, OnScreen = getPositionOnScreen(Root.Position)
+            local ScreenPos, OnScreen = Camera:WorldToViewportPoint(Root.Position)
             if not OnScreen then continue end
 
-            local Distance = (UserInputService:GetMouseLocation() - ScreenPos).Magnitude
-            if Distance <= (DistanceToMouse or Options.Radius.Value or 180) then
-                Closest = (Options.TargetPart.Value == "Random" and Character[ValidTargetParts[math.random(1, #ValidTargetParts)]] or Character[Options.TargetPart.Value])
+            local Distance = (UserInputService:GetMouseLocation() - Vector2.new(ScreenPos.X, ScreenPos.Y)).Magnitude
+            if Distance <= (Options.Radius.Value or 180) and Distance < DistanceToMouse then
+                Closest = (Options.TargetPart.Value == "Random" and Character[ValidTargetParts[math.random(1, #ValidTargetParts)]] or Character:FindFirstChild(Options.TargetPart.Value) or Root)
                 DistanceToMouse = Distance
             end
         end
         return Closest
     end
 
-    -- // UI Setup
+    -- // --- UI SETUP ---
     local Window = Library:CreateWindow({Title = 'hnhtlong.10th3 | Universal Silent Aim', Center = true, AutoShow = true})
     local GeneralTab = Window:AddTab("General")
     local InfoTab = Window:AddTab("Information")
 
-    -- Information Tab
-    local InfoGroup = InfoTab:AddLeftGroupbox("Credits")
-    InfoGroup:AddLabel("Developer: hnhtlong.10th3")
-    InfoGroup:AddLabel("Version: 1.0.2")
-    InfoGroup:AddButton("Copy Contact (Konect)", function()
-        setclipboard("https://konect.gg/hnhtlong")
-        Notify("System", "Đã sao chép link hnhtlong vào bộ nhớ tạm!", 2)
-    end)
-
-    -- Main Settings
+    -- Combat Settings
     local MainBOX = GeneralTab:AddLeftTabbox("Main")
     local Main = MainBOX:AddTab("Combat")
-    Main:AddToggle("aim_Enabled", {Text = "Kích hoạt Silent Aim"}):AddKeyPicker("aim_Key", {Default = "RightAlt", SyncToggleState = true, Mode = "Toggle", Text = "Enabled"})
-    Main:AddToggle("TeamCheck", {Text = "Kiểm tra Team", Default = false})
-    Main:AddToggle("VisibleCheck", {Text = "Kiểm tra Tầm nhìn", Default = false})
-    Main:AddDropdown("TargetPart", {Text = "Vùng ngắm", Default = "HumanoidRootPart", Values = {"Head", "HumanoidRootPart", "Random"}})
-    Main:AddDropdown("Method", {Text = "Phương thức", Default = "Raycast", Values = {"Raycast","FindPartOnRay","Mouse.Hit/Target"}})
-    Main:AddSlider('HitChance', {Text = 'Tỉ lệ trúng (%)', Default = 100, Min = 0, Max = 100, Rounding = 1})
+    Main:AddToggle("aim_Enabled", {Text = "Enabled"}):AddKeyPicker("aim_Key", {Default = "RightAlt", SyncToggleState = true, Mode = "Toggle", Text = "Toggle Silent Aim"})
+    Main:AddToggle("TeamCheck", {Text = "Team Check"})
+    Main:AddToggle("VisibleCheck", {Text = "Visible Check"})
+    Main:AddDropdown("TargetPart", {Text = "Target Part", Default = "HumanoidRootPart", Values = {"Head", "HumanoidRootPart", "Random"}})
+    Main:AddDropdown("Method", {Text = "Method", Default = "Raycast", Values = {"Raycast", "FindPartOnRay", "Mouse.Hit/Target"}})
+    Main:AddSlider('HitChance', {Text = 'Hit Chance', Default = 100, Min = 0, Max = 100, Rounding = 0, Suffix = "%"})
 
-    -- FOV Settings
+    -- Visuals Settings
     local VisualsGroup = GeneralTab:AddLeftGroupbox("Visuals")
-    VisualsGroup:AddToggle("Visible", {Text = "Hiện vòng FOV"}):AddColorPicker("Color", {Default = Color3.fromRGB(54, 57, 241)})
-    VisualsGroup:AddSlider("Radius", {Text = "Bán kính FOV", Min = 0, Max = 500, Default = 130, Rounding = 0})
-    VisualsGroup:AddToggle("MousePosition", {Text = "Hiện mục tiêu khóa"})
+    VisualsGroup:AddToggle("Visible", {Text = "Show FOV"}):AddColorPicker("Color", {Default = Color3.fromRGB(54, 57, 241)})
+    VisualsGroup:AddSlider("Radius", {Text = "FOV Radius", Min = 0, Max = 500, Default = 130})
+    VisualsGroup:AddToggle("MousePosition", {Text = "Show Target Square"})
 
-    -- Prediction
+    -- Prediction Settings
     local MiscGroup = GeneralTab:AddRightGroupbox("Miscellaneous")
-    MiscGroup:AddToggle("Prediction", {Text = "Dự đoán di chuyển (Prediction)"})
-    MiscGroup:AddSlider("Amount", {Text = "Độ nhạy Prediction", Min = 0.1, Max = 1, Default = 0.165, Rounding = 3})
+    MiscGroup:AddToggle("Prediction", {Text = "Prediction"})
+    MiscGroup:AddSlider("Amount", {Text = "Prediction Amount", Min = 0.1, Max = 1, Default = 0.165, Rounding = 3})
 
-    -- // Render Loop
+    -- Information Tab
+    local CreditsGroup = InfoTab:AddLeftGroupbox("Credits")
+    CreditsGroup:AddLabel("Developer: hnhtlong.10th3")
+    CreditsGroup:AddButton('Copy Contact Link', function()
+        setclipboard("https://konect.gg/hnhtlong")
+        Notify("System", "Copied to clipboard!")
+    end)
+
+    -- // --- RENDER & HOOKS ---
     RunService.RenderStepped:Connect(function()
         if Toggles.aim_Enabled.Value and Toggles.MousePosition.Value then
             local Target = getClosestPlayer()
@@ -177,24 +149,17 @@ function StartMainScript()
                 local RootPos, OnScreen = Camera:WorldToViewportPoint(Target.Position)
                 mouse_box.Visible = OnScreen
                 mouse_box.Position = Vector2.new(RootPos.X, RootPos.Y)
-            else
-                mouse_box.Visible = false
-            end
-        else
-            mouse_box.Visible = false
-        end
+            else mouse_box.Visible = false end
+        else mouse_box.Visible = false end
 
         if Toggles.Visible.Value then
             fov_circle.Visible = true
             fov_circle.Color = Options.Color.Value
             fov_circle.Position = UserInputService:GetMouseLocation()
             fov_circle.Radius = Options.Radius.Value
-        else
-            fov_circle.Visible = false
-        end
+        else fov_circle.Visible = false end
     end)
 
-    -- // Metamethod Hooks
     local oldNamecall
     oldNamecall = hookmetamethod(game, "__namecall", newcclosure(function(...)
         local Method = getnamecallmethod()
@@ -206,9 +171,9 @@ function StartMainScript()
                 local HitPart = getClosestPlayer()
                 if HitPart then
                     if Method == "Raycast" then
-                        Args[3] = getDirection(Args[2], HitPart.Position)
+                        Args[3] = (HitPart.Position - Args[2]).Unit * 1000
                     elseif Method == "FindPartOnRay" then
-                        Args[2] = Ray.new(Args[2].Origin, getDirection(Args[2].Origin, HitPart.Position))
+                        Args[2] = Ray.new(Args[2].Origin, (HitPart.Position - Args[2].Origin).Unit * 1000)
                     end
                     return oldNamecall(unpack(Args))
                 end
